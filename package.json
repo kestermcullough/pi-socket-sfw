@@ -1,0 +1,28 @@
+{
+  "name": "pi-socket-sfw",
+  "version": "0.1.0",
+  "description": "Pi skill to install Socket Firewall Free and alias package managers through sfw.",
+  "keywords": [
+    "pi-package",
+    "pi-skill",
+    "socket",
+    "sfw",
+    "socket-firewall"
+  ],
+  "homepage": "https://github.com/kestermcullough/pi-socket-sfw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kestermcullough/pi-socket-sfw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kestermcullough/pi-socket-sfw/issues"
+  },
+  "files": [
+    "skills"
+  ],
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  }
+}
