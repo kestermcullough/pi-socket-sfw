@@ -1,7 +1,10 @@
 {
   "name": "pi-socket-sfw",
-  "version": "0.1.0",
-  "description": "Pi skill to install Socket Firewall Free and alias package managers through sfw.",
+  "version": "0.2.0",
+  "description": "Pi skill to protect Bash package-manager commands and the Pi installer with Socket Firewall Free wrappers.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
   "keywords": [
     "pi-package",
     "pi-skill",

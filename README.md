@@ -1,59 +1,85 @@
 # pi-socket-sfw
 
-A [Pi](https://pi.dev) skill that installs [Socket Firewall Free](https://docs.socket.dev/docs/socket-firewall-free) (`sfw`) and aliases supported package managers through it.
-
-## What it does
-
-The `socket-sfw` skill can run an installer/verifier that:
-
-- installs Socket Firewall Free with `npm i -g sfw`
-- adds interactive shell aliases:
-  - `alias npm="sfw npm"`
-  - `alias yarn="sfw yarn"`
-  - `alias pnpm="sfw pnpm"`
-  - `alias pip="sfw pip"`
-  - `alias uv="sfw uv"`
-  - `alias cargo="sfw cargo"`
-- verifies `sfw --help` and checks aliases in available interactive shells
+A [Pi](https://pi.dev) skill for [Socket Firewall Free](https://docs.socket.dev/docs/socket-firewall-free) (`sfw`). Protect supported package-manager commands without remembering a prefix, including Pi's non-interactive Bash tool and npm package installer.
 
 ## Install in Pi
-
-From GitHub:
 
 ```bash
 pi install git:github.com/kestermcullough/pi-socket-sfw
 ```
 
-Or pinned to a tag once releases exist:
-
-```bash
-pi install git:github.com/kestermcullough/pi-socket-sfw@v0.1.0
-```
-
-After installing, restart Pi or run `/reload` in the Pi TUI.
-
-## Use
-
-Ask Pi to use the skill, or invoke it directly:
+Restart Pi or `/reload` to discover the skill, then ask:
 
 ```text
-/skill:socket-sfw install socket firewall and aliases
+/skill:socket-sfw protect Pi's Bash commands and package installer
 ```
 
-The skill instructs Pi to run:
+Installing this skill alone does **not** change security settings or install SFW. Review the script before running it.
+
+## Setup
+
+Requires macOS/Linux, Node.js, Bash, and `sfw` on PATH. If SFW is missing, review and install it from Socket's official distribution first. Initial installation of SFW is a bootstrap trust step, not protected by SFW itself.
+
+From this repository:
 
 ```bash
-skills/socket-sfw/scripts/install-sfw-aliases.sh
+node skills/socket-sfw/scripts/setup-pi-sfw.mjs
+node skills/socket-sfw/scripts/setup-pi-sfw.mjs --verify-only
 ```
 
-To verify without changing shell files:
+The setup script:
+
+- Creates executable wrappers for `npm`, `npx`, `yarn`, `pnpm`, `pip`, `pip3`, `uv`, and `cargo` in `~/.local/share/socket-sfw/bin`.
+- Prepends that directory using Pi's global `shellCommandPrefix`, keeping any existing prefix.
+- Sets Pi's global `npmCommand` to the protected npm wrapper, so package lookups/installations/updates use SFW even without a shell.
+- Preserves other settings, makes timestamped backups, and atomically writes JSON. Honors `PI_CODING_AGENT_DIR` for custom Pi configurations.
+- Verifies SFW, the installer wrapper, and a non-interactive Bash command. Verification uses version commands, not package downloads.
+
+**Restart Pi after setup.** Existing processes and other applications do not inherit this change automatically. Project settings can override global Pi settings.
+
+### Recursion and failures
+
+Wrappers remove their own directory from PATH and resolve the real manager and SFW before calling `sfw /absolute/path/to/manager ...`. This prevents recursive wrapping and follows the currently active Node/Python environment rather than pinning an NVM version. Missing SFW or a manager produces an error; there is no unfiltered fallback. SFW's exit status is preserved. Empty and `.` PATH entries are omitted during resolution.
+
+### Terminal and CI use
+
+The Pi Bash prefix covers Pi tool calls, not all shells system-wide. Other scripts can opt into the same wrappers:
 
 ```bash
-skills/socket-sfw/scripts/install-sfw-aliases.sh --verify-only
+export PATH="$HOME/.local/share/socket-sfw/bin:$PATH"
+npm install
+uv sync
 ```
 
-## Notes
+The older interactive-alias installer remains available:
 
-- Shell aliases only apply to interactive shells. Scripts and CI should call `sfw npm ...`, `sfw uv ...`, etc. explicitly.
-- Socket Firewall Free is wrapper-mode only, requires network access, and does not support private/custom registries in the free version.
-- Review the skill and script before running: skills can instruct agents to execute commands on your machine.
+```bash
+bash skills/socket-sfw/scripts/install-sfw-aliases.sh
+```
+
+Aliases alone do not cover Pi's installer or non-interactive shells. Do not combine aliases with wrappers unnecessarily: that can run SFW twice.
+
+## Security boundary
+
+This is a convenience/security layer, **not a sandbox or tamper-proof policy**:
+
+- SFW filters supported public package-registry traffic; it does not secure arbitrary Bash commands, `curl | sh`, Git clones, local dependencies, or all installation hooks.
+- Private/custom registries are not supported by Socket Firewall Free. Existing caches or installed packages are not retrospectively audited by this setup.
+- Absolute executable paths, PATH changes, project overrides, or editing settings/wrappers can bypass it. An existing shell prefix that replaces PATH may also override protection.
+- Child processes inside SFW receive the cleaned PATH to avoid recursion; do not assume nested package-manager launches get a second firewall wrapper.
+- Tools/extensions launching processes themselves may not use Pi's Bash prefix. SDK clients and subagents must inherit/load the relevant settings; verify their actual runtime configuration.
+- Preserve existing package-age restrictions and lockfiles. For stronger enforcement, use OS/network controls, isolation, or an organization-managed firewall.
+
+No claim of protecting every package download is made. Setup replaces any custom `npmCommand`; consult the backup before restoring or adapting an existing custom installer.
+
+## Tests
+
+```bash
+node --test tests/*.test.mjs
+```
+
+Tests use fake package managers/SFW and require no network. They check config preservation, repeat runs, quoting, argument forwarding, non-interactive Bash, installer invocation, recursion avoidance, and fail-closed behavior.
+
+## Undo
+
+Restore the pre-setup settings backup (or remove the managed PATH prefix and restore your previous `npmCommand`). Remove `~/.local/share/socket-sfw/bin` only after removing references to it. This does not uninstall SFW or remove separately installed shell aliases.

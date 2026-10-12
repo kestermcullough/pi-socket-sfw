@@ -1,56 +1,53 @@
 ---
 name: socket-sfw
-description: Install, enable, and verify Socket Firewall Free (sfw) so supported package managers are run through sfw aliases. Use when setting up or checking sfw aliases for npm, yarn, pnpm, pip, uv, or cargo.
-compatibility: macOS/Linux shell setup with npm available and network access for npm i -g sfw.
+description: Set up and verify Socket Firewall Free (sfw) for Pi's non-interactive Bash commands and package installer using fail-closed PATH wrappers. Also supports legacy interactive aliases.
+compatibility: macOS/Linux, Node.js, Bash, and sfw on PATH. Pi must support npmCommand and shellCommandPrefix settings.
 ---
 
-# Socket SFW
+# Socket SFW for Pi
 
-Use this skill when the user wants Socket Firewall Free (`sfw`) installed and package-manager commands routed through it by shell aliases.
+Use this skill to protect supported package-manager commands without requiring the model or user to remember `sfw` on every command.
 
-Socket's docs say Socket Firewall Free is zero-config, supports `npm`, `yarn`, `pnpm`, `pip`, `uv`, and `cargo`, and works in wrapper mode by prefixing commands such as `sfw npm install` or `sfw pip install requests`. See [the local summary](references/socket-firewall-free.md) for notes from the docs.
+## Preferred setup: Pi Bash and installer
 
-## Install or refresh aliases
-
-From this skill directory, run:
-
-```bash
-scripts/install-sfw-aliases.sh
-```
-
-The script:
-
-1. Runs `npm i -g sfw` using the real `npm` binary.
-2. Adds an idempotent managed alias block to common interactive shell startup files.
-3. Verifies `sfw --help` and checks aliases in available interactive shells.
-
-Managed aliases:
+1. Inspect current Pi settings and check `sfw --help`. Preserve existing package-age policies. If `sfw` is absent, review Socket's official installation instructions with the user before bootstrapping it. Do not silently bypass existing protections to install it.
+2. Explain that this changes global Pi `npmCommand` and `shellCommandPrefix`, not arbitrary command execution. If a custom `npmCommand` exists, explain that it will be replaced and backed up.
+3. From this skill directory run:
 
 ```bash
-alias npm="sfw npm"
-alias yarn="sfw yarn"
-alias pnpm="sfw pnpm"
-alias pip="sfw pip"
-alias uv="sfw uv"
-alias cargo="sfw cargo"
+node scripts/setup-pi-sfw.mjs
+node scripts/setup-pi-sfw.mjs --verify-only
 ```
 
-Open a new terminal or source the updated shell file (for example, `source ~/.zshrc`) before expecting aliases in the current shell.
+4. Ask the user to restart Pi. Check project overrides, PATH changes in any existing shell prefix, and subagent/SDK configuration separately if applicable.
+
+The dependency-free script creates wrappers in `~/.local/share/socket-sfw/bin` for `npm`, `npx`, `yarn`, `pnpm`, `pip`, `pip3`, `uv`, and `cargo`. Each removes the wrapper directory from PATH and invokes SFW with the real executable and original arguments. Missing SFW fails closed rather than running unfiltered.
+
+The script prepends the wrapper directory to Pi's Bash PATH and points the Pi installer directly at the npm wrapper. It backs up existing settings, preserves other fields, writes atomically, and respects `PI_CODING_AGENT_DIR`. The smoke tests run version commands, not downloads. Inspect the printed backup path before undoing changes.
 
 ## Verify only
 
 ```bash
-scripts/install-sfw-aliases.sh --verify-only
+node scripts/setup-pi-sfw.mjs --verify-only
 ```
 
-Expected verification signals:
+This checks wrapper contents/executable permissions, Pi configuration, SFW availability, and installer/non-interactive Bash smoke tests without modifying files. A successful check is not proof that all extensions, child sessions, registries, or downloads are protected.
 
-- `sfw --help` prints `Socket Firewall Free - Network security proxy for package managers`.
-- In an interactive shell, `alias npm` prints `npm='sfw npm'` (format varies by shell).
-- `npm --version` from a newly opened interactive shell runs through the alias.
+## Legacy interactive aliases (optional)
 
-## Notes
+```bash
+bash scripts/install-sfw-aliases.sh
+bash scripts/install-sfw-aliases.sh --verify-only
+```
 
-- Shell aliases affect interactive shells. Non-interactive scripts and tool calls should explicitly run `sfw npm ...`, `sfw uv ...`, etc.
-- To bypass an alias for one command, use `command npm ...` (or the full executable path).
-- Socket Firewall Free requires network connectivity and does not support private/custom registries.
+That older installer installs SFW and writes interactive shell aliases. Prefer the Pi setup above for tool calls and package installation. Avoid adding aliases to wrappers unnecessarily (double wrapping). If SFW is already present, retain it rather than unnecessarily bootstrapping again.
+
+## Boundaries and undo
+
+- This is not an OS sandbox: absolute paths, changed PATH, config overrides, direct downloads, and arbitrary shell scripts can bypass it.
+- SFW Free filters supported public registries, not private/custom registries, existing caches, or all lifecycle-hook activity. Child manager processes receive a cleaned PATH to avoid recursion.
+- Extensions that spawn executables directly may not use Pi's shell prefix. Verify subagent settings; do not assume all SDK sessions load global shell settings.
+- Keep `uv` as the default Python manager where required by project/user instructions. Do not replace package-age policy with SFW.
+- Undo by restoring the settings backup or removing the managed prefix and restoring the prior `npmCommand`, then deleting the wrapper directory. Separately installed aliases remain.
+
+See [Socket documentation summary](references/socket-firewall-free.md) and the repository README for further limitations.

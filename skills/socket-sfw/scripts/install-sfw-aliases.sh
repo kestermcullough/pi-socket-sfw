@@ -117,6 +117,10 @@ add_unique() {
 }
 
 install_sfw() {
+  if command -v sfw >/dev/null 2>&1; then
+    log "sfw is already installed; retaining current version"
+    return 0
+  fi
   local npm_bin
   npm_bin="$(command -v npm || true)"
   [ -n "$npm_bin" ] || die "npm was not found; install Node/npm first or install sfw manually"
