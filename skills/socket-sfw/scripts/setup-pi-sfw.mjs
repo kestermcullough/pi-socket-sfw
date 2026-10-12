@@ -5,6 +5,11 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 
+if (process.platform === 'win32') {
+  console.error('Native Windows is not supported by these POSIX wrappers. No configuration was changed. Use WSL/Linux, or follow references/platform-setup.md for partial native Windows setup.');
+  process.exit(1);
+}
+
 const verify = process.argv.includes('--verify-only');
 if (process.argv.slice(2).some(arg => arg !== '--verify-only')) {
   console.error('Usage: node setup-pi-sfw.mjs [--verify-only]');

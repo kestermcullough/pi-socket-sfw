@@ -1,12 +1,20 @@
 ---
 name: socket-sfw
 description: Set up and verify Socket Firewall Free (sfw) for Pi's non-interactive Bash commands and package installer using fail-closed PATH wrappers. Also supports legacy interactive aliases.
-compatibility: macOS/Linux, Node.js, Bash, and sfw on PATH. Pi must support npmCommand and shellCommandPrefix settings.
+compatibility: Automatic setup on macOS/Linux (including WSL) with Node.js, Bash, and sfw. Native Windows has manual partial-coverage guidance only. Pi must support npmCommand and shellCommandPrefix settings.
 ---
 
 # Socket SFW for Pi
 
 Use this skill to protect supported package-manager commands without requiring the model or user to remember `sfw` on every command.
+
+## Platform selection — required for every invocation
+
+First read [the cross-platform runbook](references/platform-setup.md), whether invoked as a skill, through another agent, or by CLI. Identify the actual execution OS with `node -p process.platform` and the shell/config directory in that environment. Do not assume the parent agent's OS applies to a remote runner or subagent.
+
+- **Linux/macOS/WSL Linux:** use the automatic setup below, then verify in the actual Pi session.
+- **Native Windows:** do not run the POSIX setup. Prefer WSL for full current automation; otherwise follow the runbook's manual installer-only setup and explicitly report that native shell-tool wrapping is not implemented/tested.
+- **Git Bash with Windows Node:** not WSL; do not bypass the Windows guard.
 
 ## Preferred setup: Pi Bash and installer
 
@@ -50,4 +58,4 @@ That older installer installs SFW and writes interactive shell aliases. Prefer t
 - Keep `uv` as the default Python manager where required by project/user instructions. Do not replace package-age policy with SFW.
 - Undo by restoring the settings backup or removing the managed prefix and restoring the prior `npmCommand`, then deleting the wrapper directory. Separately installed aliases remain.
 
-See [Socket documentation summary](references/socket-firewall-free.md) and the repository README for further limitations.
+SFW Free blocks confirmed malware, not every AI-flagged or unknown package, and collects non-configurable telemetry. See [Socket documentation summary](references/socket-firewall-free.md), [the platform runbook](references/platform-setup.md), and the repository README for further limitations.

@@ -16,6 +16,19 @@ Restart Pi or `/reload` to discover the skill, then ask:
 
 Installing this skill alone does **not** change security settings or install SFW. Review the script before running it.
 
+## Platforms and agent guidance
+
+Read [the cross-platform runbook](skills/socket-sfw/references/platform-setup.md) before setup, whether using Pi, another agent, or a standalone shell.
+
+| Environment | Current support |
+| --- | --- |
+| macOS | Automatic setup; verified locally |
+| Linux | Same POSIX setup; Linux/macOS mocked-test CI matrix added; verify actual CI/target results |
+| Windows via WSL | Run Linux Node/Pi/SFW inside WSL and follow Linux steps; separate settings from native Windows |
+| Native Windows | Manual installer-only guidance; automatic shell wrappers are not implemented or validated |
+
+The POSIX installer refuses Windows Node (including Git Bash) before making changes. Native Windows guidance explains SFW installation, a conditional `npmCommand` configuration, verification, and the remaining protection gap. Do not claim cross-platform parity from passing macOS tests.
+
 ## Setup
 
 Requires macOS/Linux, Node.js, Bash, and `sfw` on PATH. If SFW is missing, review and install it from Socket's official distribution first. Initial installation of SFW is a bootstrap trust step, not protected by SFW itself.
@@ -65,6 +78,7 @@ This is a convenience/security layer, **not a sandbox or tamper-proof policy**:
 
 - SFW filters supported public package-registry traffic; it does not secure arbitrary Bash commands, `curl | sh`, Git clones, local dependencies, or all installation hooks.
 - Private/custom registries are not supported by Socket Firewall Free. Existing caches or installed packages are not retrospectively audited by this setup.
+- Free blocks confirmed malware, but AI-flagged and unknown/unscanned packages may only warn or remain allowed. Its telemetry cannot be disabled.
 - Absolute executable paths, PATH changes, project overrides, or editing settings/wrappers can bypass it. An existing shell prefix that replaces PATH may also override protection.
 - Child processes inside SFW receive the cleaned PATH to avoid recursion; do not assume nested package-manager launches get a second firewall wrapper.
 - Tools/extensions launching processes themselves may not use Pi's Bash prefix. SDK clients and subagents must inherit/load the relevant settings; verify their actual runtime configuration.

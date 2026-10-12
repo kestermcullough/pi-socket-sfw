@@ -4,7 +4,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-const script = new URL('../skills/socket-sfw/scripts/setup-pi-sfw.mjs', import.meta.url).pathname;
+const scriptUrl = new URL('../skills/socket-sfw/scripts/setup-pi-sfw.mjs', import.meta.url);
+const script = scriptUrl.pathname;
+
+test('Windows guard refuses setup before writing configuration (simulated platform)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'socket-sfw-windows-guard-'));
+  try {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e',
+      `Object.defineProperty(process, 'platform', { value: 'win32' }); await import(${JSON.stringify(scriptUrl.href)});`], {
+      env: { ...process.env, HOME: root, PI_CODING_AGENT_DIR: path.join(root, 'agent') },
+      encoding: 'utf8'
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Native Windows is not supported/);
+    assert.deepEqual(fs.readdirSync(root), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('Pi wrappers: config preservation, idempotency, args, recursion and fail-closed', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'socket-sfw-test-'));
